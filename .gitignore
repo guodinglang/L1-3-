@@ -1,0 +1,30 @@
+# MDK Keil 缂栬瘧浜х墿 鍏ㄩ噺灞忚斀
+Project/mdk_v5/objects/
+Project/mdk_v5/listings/
+
+# 鍗曚釜缂栬瘧鏂囦欢鍚庣紑
+*.o
+*.map
+*.uvguix.*
+*.axf
+*.hex
+*.bin
+*.crf
+*.d
+*.dep
+*.htm
+*.iex
+*.lnp
+*.sct
+*.tra
+*.scvd
+
+# MDK閰嶇疆缂撳瓨
+*.uvoptx
+*.uvopt
+
+# Keil界面布局缓存
+*.uvguix.*
+
+
+
