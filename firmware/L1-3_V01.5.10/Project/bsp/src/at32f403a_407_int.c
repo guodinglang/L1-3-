@@ -157,18 +157,18 @@ void SysTick_Handler(void)
 		ticks = 0;
     }
 	
-	if((system_tick % 1000) == 0)
+	if(wait_for_compensation_cnt > 1)
 	{
-//		int32_t current_encoder = Encoder_AB_GetCount();
-//    float expected_encoder = motor_status.position * (ENCODER_PER_REVOLUTION / STEPS_PER_REV);
-//    int32_t encoder_delta = current_encoder - expected_encoder;
-//    int32_t position_delta = motor_status.position - (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
-//    
-//	  sprintfx("encoder: %ld, moto: %ld, delta: %ld\r\n", current_encoder, motor_status.position, position_delta);
+		wait_for_compensation_cnt--;
+		gpio_bits_toggle(STORE_PORT, STORE_PIN);
+	}
+	
+//	if((system_tick % 1000) == 0)
+//	{
 //		int32_t cnt = Encoder_AB_GetCount();
 //        sprintfx("enc=%ld\r\n", cnt);
 //		sprintfx("loc=%d\r\n", motor_status.position);
-	}
+//	}
 }
 
 /**

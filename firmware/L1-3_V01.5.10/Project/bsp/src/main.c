@@ -30,6 +30,7 @@ int main(void)
 		SwitchMessage();          // 按键处理
 		rxCommand();              // 解析串口命令
 		AcquisitMCP9700A();       // PCB温度采样
+		wait_for_compensation();  // 实时纠偏
 //		WorkStateLED();
 //		wdt_counter_reload();
 	}

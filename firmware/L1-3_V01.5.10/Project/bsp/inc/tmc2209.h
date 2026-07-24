@@ -92,6 +92,8 @@
 #define ENCODER_CORRECT_THRESHOLD 3         // 修正阈值（步数） 25600/4000=6.4步/脉冲，3步误差约等于半个编码器脉冲
 #define ENCODER_FEEDBACK_COMPENSATION_TIMES 1 // 反馈补偿次数
 
+#define COMPENSATION_TIME  50
+
 
 /* 工作模式 */
 typedef enum {
@@ -357,6 +359,7 @@ typedef enum {
 extern bool motor_busy ;
 extern PositionConfig position_config;
 //extern volatile uint32_t system_tick;
+extern volatile uint8_t wait_for_compensation_cnt;
 
 
 static DriverError load_config_from_flash(void);
@@ -419,6 +422,7 @@ DriverError save_position_config(void) ;
 void tmc2209_move_steps(uint32_t steps, uint32_t frequency_hz, motor_direction_t dir);
 void tmc2209_move_steps_ramp(uint32_t steps, uint32_t frequency_hz, motor_direction_t dir);
 void tmc2209_timer_set_frequency(uint32_t frequency_hz);
+void wait_for_compensation(void);
 
 void tmc2209_disable_motor(void);
 void tmc2209_calculate_deviation(void);

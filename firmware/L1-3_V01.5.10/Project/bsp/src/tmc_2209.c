@@ -15,7 +15,7 @@
 #include "project.h"
 PositionConfig position_config;
 
-static int32_t current_position = 0;      // 当前位置（步数）
+//static int32_t current_position = 0;      // 当前位置（步数）
 bool motor_busy = FALSE;                  // 电机忙标志
 
 
@@ -34,7 +34,8 @@ static volatile uint32_t accel_steps = 60;         // 加速段步数
 static volatile uint32_t decel_steps = 60;         // 减速段步数
 static volatile uint8_t ramp_phase = 0;            // 0:加速 1:匀速 2:减速
 static volatile uint8_t send_cnt = 0;             // 发送次数计数器
-static volatile uint8_t compensation_flag = 0;    // 编码器反馈修正标志
+volatile uint8_t wait_for_compensation_cnt = 0;
+
 
 motor_status_t motor_status = {0};
 
@@ -437,39 +438,34 @@ void TMR3_GLOBAL_IRQHandler(void)
         tmc2209_step_pulse();
         step_counter++;
 
-        if(compensation_flag == 0)
-        {
-            /* 动态频率调整 */
-            if(step_counter <= accel_steps) {
-                // 加速段：线性增加频率
-                current_step_freq = accel_start_freq +
-                    (accel_max_freq - accel_start_freq) * step_counter / accel_steps;
-                ramp_phase = 0;
-            }
-            else if(step_counter <= (target_steps - decel_steps)) {
-                // 匀速段：保持最大频率
-                current_step_freq = accel_max_freq;
-                ramp_phase = 1;
-            }
-            else if(step_counter < target_steps) {
-                // 减速段：线性降低频率到接近0速
-                uint32_t decel_progress = step_counter - (target_steps - decel_steps);
-                current_step_freq = accel_max_freq -
-                    (accel_max_freq - 500) * decel_progress / decel_steps;  // 降低到500Hz减少抖动
-                ramp_phase = 2;
-            }
+        /* 动态频率调整 */
+        if(step_counter <= accel_steps) {
+            // 加速段：线性增加频率
+            current_step_freq = accel_start_freq +
+                (accel_max_freq - accel_start_freq) * step_counter / accel_steps;
+            ramp_phase = 0;
+        }
+        else if(step_counter <= (target_steps - decel_steps)) {
+            // 匀速段：保持最大频率
+            current_step_freq = accel_max_freq;
+            ramp_phase = 1;
+        }
+        else if(step_counter < target_steps) {
+            // 减速段：线性降低频率到接近0速
+            uint32_t decel_progress = step_counter - (target_steps - decel_steps);
+            current_step_freq = accel_max_freq -
+                (accel_max_freq - 500) * decel_progress / decel_steps;  // 降低到500Hz减少抖动
+            ramp_phase = 2;
+        }
 
-            /* 更新定时器频率 */
-            if(step_counter < target_steps) {
-                tmc2209_timer_set_frequency(current_step_freq);
-            }
-//			tmc2209_config.step_frequency = current_step_freq;
-        }     
+        /* 更新定时器频率 */
+        if(step_counter < target_steps) {
+            tmc2209_timer_set_frequency(current_step_freq);
+        }
 
         /* 到达目标步数停止 */
         if(target_steps > 0 && step_counter >= target_steps) {
             tmc2209_stop_motion();
-            compensation_flag = 0;
         }
 
         tmr_flag_clear(STEP_TIMER, TMR_OVF_FLAG);
@@ -522,14 +518,14 @@ void tmc2209_timer_set_frequency(uint32_t frequency_hz)
 ;***************************************************************************/
 void tmc2209_calculate_deviation(void)
 {
-	delay_ms(500);
+//	delay_ms(50);
     /* 获取当前编码器位置 */
     int32_t current_encoder = Encoder_AB_GetCount();
     float expected_encoder = motor_status.position * (ENCODER_PER_REVOLUTION / STEPS_PER_REV);
     int32_t encoder_delta = current_encoder - expected_encoder;
     int32_t position_delta = motor_status.position - (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
     
-	sprintfx("%ld\r\n", position_delta);
+	sprintfx("编码器位置: %ld, 目标位置: %ld, 偏差微步数: %ld\r\n", current_encoder, motor_status.position, position_delta);
 //	sprintfx("通道号: %ld, 目标位置: %ld, 偏差微步数: %ld\r\n", motor_status.channelNo, motor_status.position, position_delta);
 }
 
@@ -547,7 +543,7 @@ void tmc2209_calculate_deviation(void)
 ;***************************************************************************/
 DriverError tmc2209_wait_move_done(uint16_t timeout_ms)
 {
-    uint32_t timeout = 0;
+//    uint32_t timeout = 0;
     DriverError ret = DRV_OK;
 
     while (is_running)
@@ -624,7 +620,6 @@ void tmc2209_motion_compensation(void)
 			target_steps = correct_steps;
 			
 			tmc2209_set_direction(correct_dir);
-//			compensation_flag = 1; // 设置补偿标志
 			if (tmc2209_config.step_frequency != MOVE_COMP_SPEED)
 			{
 				tmc2209_config.step_frequency = MOVE_COMP_SPEED;
@@ -717,7 +712,7 @@ void tmc2209_move_steps_ramp(uint32_t steps, uint32_t max_freq, motor_direction_
 		decel_steps = steps / 4;      // 减速段占25%，更长减速减少抖动
 	} else {
 		accel_steps = steps / 8;      // 长距离：加速段占12.5%
-		decel_steps = steps / 4;      // 减速段占20%，增加减速段长度
+		decel_steps = steps / 5;      // 减速段占20%，增加减速段长度
 	}
 
 	/* 确保至少有一定加减速步数 */
@@ -760,6 +755,8 @@ void tmc2209_move_steps_ramp(uint32_t steps, uint32_t max_freq, motor_direction_
 
 	/* 等待运动完成 */
 	while(is_running) {};
+		
+	wait_for_compensation_cnt = COMPENSATION_TIME;
 
     // /* 拉低驱动器使能引脚2ms再恢复锁定 */
 	// gpio_bits_set(TMC_ENN_PORT, TMC_ENN_PIN);
@@ -767,15 +764,27 @@ void tmc2209_move_steps_ramp(uint32_t steps, uint32_t max_freq, motor_direction_
 	// gpio_bits_reset(TMC_ENN_PORT, TMC_ENN_PIN);
 
 	/* 运动完成后延时稳定电机，减少抖动 */
-	delay_ms(50);  // 等待50ms让电机完全稳定
+//	delay_ms(50);  // 等待50ms让电机完全稳定
 
 	/* 运动完成后补偿 */
-//	if(((motor_status.homing) && (send_cnt % 2 == 1))) {
-	if(motor_status.homing) {
-		for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
-			tmc2209_motion_compensation();
+//	if(((motor_status.homing))) {
+//		for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
+//			tmc2209_motion_compensation();
+//		}
+//	}
+}
+
+void wait_for_compensation(void)
+{
+	if(wait_for_compensation_cnt == 1)
+	{
+		if(((motor_status.homing))) {
+			for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
+				tmc2209_motion_compensation();
+			}
 		}
-//		tmc2209_calculate_deviation();
+		wait_for_compensation_cnt = COMPENSATION_TIME;
+		tmc2209_calculate_deviation();
 	}
 }
 /***************************************************************************
@@ -857,7 +866,7 @@ DriverError tmc2209_homing(uint32_t speed_hz)
 ;***************************************************************************/
 void tmc2209_stallguard_config(void) 
 {
-	uint32_t data;
+//	uint32_t data;
     DriverError ret = DRV_OK;
 	delay_ms(10);
 //	if(tmc2209_config.run_mode == TMC_MODE_SPREADCYCLE)
@@ -880,7 +889,11 @@ void tmc2209_stallguard_config(void)
     tmc2209_uart_write_reg(TMC2209_REG_CHOPCONF,0x01000053);
     delay_ms(10);
     tmc2209_uart_write_reg(TMC2209_REG_PWMCONF,0xC10D1624);
+    delay_ms(10);  // 等待TMC2209上电稳定
+    TMC2209_WriteRegister(TMC2209_REG_TPOWERDOWN, 0x00000001);
+    delay_ms(1);
     delay_ms(10);
+
 //	tmc2209_uart_read_reg(TMC2209_REG_CHOPCONF,&data);
 //	delay_ms(10);
 	motor_status.homing = 0;
@@ -1510,7 +1523,7 @@ DriverError move_to_home(void)
     }
 	ret = tmc2209_homing(10);
     motor_status.channelNo=0;
-    current_position = 0;
+//    current_position = 0;
 	motor_status.homing = 1;
     motor_busy = false;
     BUSY(0);

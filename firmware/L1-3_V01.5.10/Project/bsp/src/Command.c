@@ -704,9 +704,10 @@ char OffsetChannel(void *p,...)
                 {
                     //sprintfx("pass:%d\r\n",sumsteps);
 //                    tmc2209_move_steps(step, MOVE_SPEED, (motor_direction_t)dir);
-									tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
-//                    printfx(p);printfx(" pass\r\n");
-					tmc2209_calculate_deviation();
+					wait_for_compensation_cnt = 0;
+					tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
+                    printfx(p);printfx(" pass\r\n");
+//					tmc2209_calculate_deviation();
                 }
                 else
                 {
@@ -729,9 +730,10 @@ char OffsetChannel(void *p,...)
                 {                    
                     //sprintfx("pass:%d\r\n",sumsteps);
 //                    tmc2209_move_steps(step, MOVE_SPEED, (motor_direction_t)dir);
-									tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
-//                    printfx(p);printfx(" pass\r\n");
-					tmc2209_calculate_deviation();
+					wait_for_compensation_cnt = 0;		
+					tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
+                    printfx(p);printfx(" pass\r\n");
+//					tmc2209_calculate_deviation();
                 }
                 else
                 {

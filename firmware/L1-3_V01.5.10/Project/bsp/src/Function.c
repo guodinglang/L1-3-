@@ -73,7 +73,7 @@ void SwitchMessage(void)
 		o.bit.b5 = t.bit.b4; // PB4
 		if(!EP_MODE)
 		{//
-			delay_us(1);
+//			delay_us(1);
 			if(!EP_MODE)
 			{
 				o.regis &= params.pps;
