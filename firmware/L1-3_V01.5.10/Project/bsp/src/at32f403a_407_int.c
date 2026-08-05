@@ -160,7 +160,7 @@ void SysTick_Handler(void)
 	if(wait_for_compensation_cnt > 1)
 	{
 		wait_for_compensation_cnt--;
-		gpio_bits_toggle(STORE_PORT, STORE_PIN);
+//		gpio_bits_toggle(STORE_PORT, STORE_PIN);
 	}
 	
 //	if((system_tick % 1000) == 0)
@@ -216,7 +216,7 @@ void EXINT3_IRQHandler(void)
 		exint_flag_clear(EXINT_LINE_3);
 		
 //		pin_states.org_state = 1;
-		g_origin_location_flag = 1;
+//		g_origin_location_flag = 1;
 	}
 }
 
@@ -243,6 +243,11 @@ void EXINT15_10_IRQHandler(void)
         // ��ת��⴦��
         tmc2209_stall_detected();
     }
+	else if (exint_flag_get(EXINT_LINE_12) != RESET) 
+	{
+		exint_flag_clear(EXINT_LINE_12);
+		g_origin_location_flag = 1;
+	} 
 }
 
 

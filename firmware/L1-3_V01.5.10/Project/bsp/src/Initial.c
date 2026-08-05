@@ -101,9 +101,9 @@ void W25Q128_ParametInit(void)
 	uint8_t i;
 	
 	W25Q128_ReadMulByte(FLASH_SECTION_PARAMETER,&params.fInitial,1);
-	if(0xAE != params.fInitial)
+	if(0xAA != params.fInitial)
 	{	
-		params.fInitial=0xAE;	//标记初始化
+		params.fInitial=0xAA;	//标记初始化
 		
 		
 		memset(params.IDN,0,sizeof(params.IDN));
@@ -115,7 +115,7 @@ void W25Q128_ParametInit(void)
 		memset(params.ver,0,sizeof(params.ver));
 		memcpy(params.ver,"PCB:L1-2,PRG:V0.2",17);
 		
-		params.nCH = 16;	
+		params.nCH = 60;	
 		params.pps=0xFF;
 		
 		for(i=0;i<4;i++)
@@ -184,6 +184,7 @@ void bsp_Init(void)
 	pUART->rxn = 0;
 	memset(&swMess,0,sizeof(swMess));
 	M_DIAG_exti_config();
+	M_ORG_exti_config();
 	D_EZ_exti_config();
 	Encoder_AB_Init();
 //	AD5504_PowerUp(0xff);	//all channel on
@@ -327,6 +328,50 @@ char itoa(int tv,char *str)
 	}	
 	
 	return c;
+}
+
+/***************************************************************************
+;** 函数名称:   M_ORG_exti_config
+;** 功能描述:   光电开关
+;** 输入参数: 
+;** 返 回 值: 
+;** 全局变量: 
+;** 调用模块: 
+;** 作　  者:   G-D-L
+;** 日　  期:   2026-7-25
+;** 修改原因：
+;** 说    明:  	M_ORG 零点定位，使用外部中断处理
+;***************************************************************************/
+void M_ORG_exti_config(void) 
+{
+    gpio_init_type gpio_init_struct;
+    // 配置外部中断
+    exint_init_type exti_init_struct;
+    // 启用GPIOA时钟
+	crm_periph_clock_enable(CRM_IOMUX_PERIPH_CLOCK, TRUE);
+    crm_periph_clock_enable(CRM_GPIOA_PERIPH_CLOCK, TRUE);
+    
+    // 配置PA11为上拉输入
+    gpio_default_para_init(&gpio_init_struct);
+    gpio_init_struct.gpio_pins = M_ORG_PIN;  // M_DIAG
+	gpio_init_struct.gpio_out_type  = GPIO_OUTPUT_PUSH_PULL;
+    gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
+    gpio_init_struct.gpio_pull = GPIO_PULL_DOWN;
+    gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
+    gpio_init(M_ORG_PORT, &gpio_init_struct);
+    // 选择PA11作为EXTI11
+    gpio_exint_line_config(GPIO_PORT_SOURCE_GPIOA, GPIO_PINS_SOURCE12);
+    
+    exint_default_para_init(&exti_init_struct);
+    exti_init_struct.line_enable = TRUE;
+    exti_init_struct.line_mode = EXINT_LINE_INTERRUPUT;
+    exti_init_struct.line_select = EXINT_LINE_12;
+    exti_init_struct.line_polarity = EXINT_TRIGGER_RISING_EDGE;
+    exint_init(&exti_init_struct);
+    
+    // 配置NVIC
+//    nvic_priority_group_config(NVIC_PRIORITY_GROUP_4);
+    nvic_irq_enable(EXINT15_10_IRQn, 3, 3);
 }
 
 /***************************************************************************

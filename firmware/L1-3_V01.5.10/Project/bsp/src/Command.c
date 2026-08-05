@@ -566,7 +566,7 @@ char LevelValueDispose(void *p,...)
             position_config.points[chn].step_count = data;
             position_config.points[chn].calibrated = true;
             position_config.points[chn].calibration_time = 0;
-            //save_config_to_flash();
+            W25Q128_SaveParamet(FLASH_SECTION_PARAMETER,(uint8_t*)&params);//SaveParamet();
             printfx(" pass\r\n");
         }
         else
@@ -706,7 +706,8 @@ char OffsetChannel(void *p,...)
 //                    tmc2209_move_steps(step, MOVE_SPEED, (motor_direction_t)dir);
 					wait_for_compensation_cnt = 0;
 					tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
-                    printfx(p);printfx(" pass\r\n");
+//                    printfx(p);
+					printfx(" pass\r\n");
 //					tmc2209_calculate_deviation();
                 }
                 else
@@ -732,7 +733,8 @@ char OffsetChannel(void *p,...)
 //                    tmc2209_move_steps(step, MOVE_SPEED, (motor_direction_t)dir);
 					wait_for_compensation_cnt = 0;		
 					tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
-                    printfx(p);printfx(" pass\r\n");
+//                    printfx(p);
+					printfx(" pass\r\n");
 //					tmc2209_calculate_deviation();
                 }
                 else
@@ -770,7 +772,7 @@ char OffsetChannel(void *p,...)
 		{
 			tmc2209_move_steps(step, MOVE_SPEED, DIR_CW);
 			printfx(p);printfx(" pass\r\n");
-			tmc2209_calculate_deviation();
+//			tmc2209_calculate_deviation();
 		}
 		else
 		{

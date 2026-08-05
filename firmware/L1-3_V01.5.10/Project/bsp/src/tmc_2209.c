@@ -518,14 +518,14 @@ void tmc2209_timer_set_frequency(uint32_t frequency_hz)
 ;***************************************************************************/
 void tmc2209_calculate_deviation(void)
 {
-//	delay_ms(50);
+//	delay_ms(50);  
     /* 获取当前编码器位置 */
     int32_t current_encoder = Encoder_AB_GetCount();
     float expected_encoder = motor_status.position * (ENCODER_PER_REVOLUTION / STEPS_PER_REV);
-    int32_t encoder_delta = current_encoder - expected_encoder;
-    int32_t position_delta = motor_status.position - (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
+    float encoder_position = (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
+    float position_delta = motor_status.position - encoder_position;
     
-	sprintfx("编码器位置: %ld, 目标位置: %ld, 偏差微步数: %ld\r\n", current_encoder, motor_status.position, position_delta);
+	sprintfx("编码器位置: %ld, 目标位置: %ld, 偏差微步数: %f\r\n", current_encoder, motor_status.position, position_delta);
 //	sprintfx("通道号: %ld, 目标位置: %ld, 偏差微步数: %ld\r\n", motor_status.channelNo, motor_status.position, position_delta);
 }
 
@@ -573,7 +573,7 @@ DriverError tmc2209_wait_move_done(uint16_t timeout_ms)
 ;** 修改原因：  
 ;** 说    明:  	
 ;***************************************************************************/
-void tmc2209_motion_compensation(void)
+uint8_t tmc2209_motion_compensation(void)
 {
 	/* 等待主运动完成 */
 //	while(is_running){};
@@ -584,10 +584,18 @@ void tmc2209_motion_compensation(void)
 	/* 停止后进行编码器位置补偿 */
 	int32_t current_encoder = Encoder_AB_GetCount();
 	int32_t encoder_delta = current_encoder - encoder_start_count;
+//    int32_t current_encoder = Encoder_AB_GetCount();
+//    float expected_encoder = motor_status.position * (ENCODER_PER_REVOLUTION / STEPS_PER_REV);
+//    float encoder_position = (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
+//    float position_delta = motor_status.position - encoder_position;
+    
+	
 	
 	/* 计算编码器对应的理论步数 */
-	int32_t expected_steps = (encoder_delta * STEPS_PER_REV) / ENCODER_PER_REVOLUTION;
-	int32_t error = motor_status.position - expected_steps;
+	float expected_steps = (encoder_delta * STEPS_PER_REV) / ENCODER_PER_REVOLUTION;
+	float error = motor_status.position - expected_steps;
+	
+//	sprintfx("编码器位置: %ld, 目标位置: %ld, 偏差微步数: %f\r\n", current_encoder, motor_status.position, error);
 	
 	/* 误差超过阈值时进行补偿运动 */
 	if (error > ENCODER_CORRECT_THRESHOLD || error < -ENCODER_CORRECT_THRESHOLD)
@@ -635,7 +643,142 @@ void tmc2209_motion_compensation(void)
 			while(is_running){};
 //			tmc2209_wait_move_done(10000);
 		}
+		
+//		sprintfx("补偿数: %ld\r\n", error);
 	}
+//	else
+//	{
+//		wait_for_compensation_cnt = 0;
+//		motor_direction_t correct_dir;
+//		uint32_t correct_steps;
+//		
+//		if (error < 0)
+//		{
+//			/* 走多了，反向补偿 */
+//			correct_dir = DIR_CCW;//(dir == DIR_CW) ? DIR_CCW : DIR_CW;
+//			correct_steps = (uint32_t)(-error);
+//		}
+//		else
+//		{
+//			/* 走少了，同向补偿 */
+//			correct_dir = DIR_CW;
+//			correct_steps = (uint32_t)(error);
+//		}
+//		
+//		/* 执行补偿运动（慢速） */
+//		if (correct_steps > 0)
+//		{
+////				encoder_start_count = Encoder_AB_GetCount();  // 记录补偿前位置
+//			step_counter = 0;
+//			target_steps = correct_steps;
+//			
+//			tmc2209_set_direction(correct_dir);
+//			if (tmc2209_config.step_frequency != MOVE_COMP_SPEED)
+//			{
+//				tmc2209_config.step_frequency = MOVE_COMP_SPEED;
+//				tmc2209_timer_set_frequency(MOVE_COMP_SPEED);
+//				motor_status.speed = MOVE_COMP_SPEED;
+//			}
+//			tmr_counter_enable(STEP_TIMER, TRUE);
+//			is_running = 1;
+//			motor_status.moving = 1;
+//			BUSY(1);
+//			
+//			/* 等待补偿完成 */
+//			while(is_running){};
+////			tmc2209_wait_move_done(10000);
+//		}
+//	}
+//	else
+//	{
+//		motor_direction_t correct_dir;
+//		uint32_t correct_steps;
+//		
+//		if (error < 0)
+//		{
+//			/* 走多了，反向补偿 */
+//			correct_dir = DIR_CCW;//(dir == DIR_CW) ? DIR_CCW : DIR_CW;
+//			correct_steps = (uint32_t)(-error);
+//		}
+//		else
+//		{
+//			/* 走少了，同向补偿 */
+//			correct_dir = DIR_CW;
+//			correct_steps = (uint32_t)(error);
+//		}
+//		
+//		/* 执行补偿运动（慢速） */
+//		if (correct_steps > 0)
+//		{
+//			tmc2209_set_direction(correct_dir); 
+//			last_encoder = motor_status.position/6.4;
+//			if(error > 0) // 走少了，目标值比刻度大，往前走
+//			{
+////				for(uint8_t j = 0;j < error;j++)
+////				{
+////					tmc2209_step_pulse();
+////					for(uint32_t i = 0; i < 10000; i++) {
+////						__NOP();
+////					}
+////				}
+//				step_counter = 0;
+//				target_steps = correct_steps;
+//				
+//				tmc2209_set_direction(correct_dir);
+//				if (tmc2209_config.step_frequency != MOVE_COMP_SPEED)
+//				{
+//					tmc2209_config.step_frequency = MOVE_COMP_SPEED;
+//					tmc2209_timer_set_frequency(MOVE_COMP_SPEED);
+//					motor_status.speed = MOVE_COMP_SPEED;
+//				}
+//				tmr_counter_enable(STEP_TIMER, TRUE);
+//				is_running = 1;
+//				motor_status.moving = 1;
+//				BUSY(1);
+//				
+//				/* 等待补偿完成 */
+//				while(is_running){};
+//					
+//				delay_ms(50);	
+//				current_encoder = Encoder_AB_GetCount();
+//				if(current_encoder > last_encoder)
+//				{
+//					tmc2209_set_direction(DIR_CCW); // 先往前走几步到下一个刻度，再这里返回
+//					error = abs(current_encoder*6.4 - motor_status.position);
+//					for(uint8_t j = 0;j < (uint8_t)error;j++)
+//					{
+//						tmc2209_step_pulse();
+//						for(uint32_t i = 0; i < 1000; i++) {
+//							__NOP();
+//						}
+//					}
+//				}
+//			}
+//			else // 走多了，目标值比刻度小，往后走
+//			{
+//				for(uint8_t j = 0;j < 10;j++)
+//				{
+//					tmc2209_step_pulse();
+//					for(uint32_t i = 0; i < 1000; i++) {
+//						__NOP();
+//					}
+//					current_encoder = Encoder_AB_GetCount();
+//					if(current_encoder < last_encoder)  break;
+//				}
+//				tmc2209_set_direction(DIR_CW); // 先往后走几步到下一个刻度，再往前几步
+//				error = abs(motor_status.position - current_encoder*6.4);
+//				for(uint8_t j = 0;j < (uint8_t)error;j++)
+//				{
+//					tmc2209_step_pulse();
+//					for(uint32_t i = 0; i < 1000; i++) {
+//						__NOP();
+//					}
+//				}
+//			}
+//		}
+//	}
+	
+	return 0;
 }
 /***************************************************************************
 ;** 函数名称: 	tmc2209_move_steps
@@ -778,13 +921,13 @@ void wait_for_compensation(void)
 {
 	if(wait_for_compensation_cnt == 1)
 	{
-		if(((motor_status.homing))) {
-			for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
-				tmc2209_motion_compensation();
-			}
-		}
+//		tmc2209_calculate_deviation();
 		wait_for_compensation_cnt = COMPENSATION_TIME;
-		tmc2209_calculate_deviation();
+		if(((motor_status.homing))) {
+//			for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
+				tmc2209_motion_compensation();
+//			}
+		}		
 	}
 }
 /***************************************************************************
@@ -808,14 +951,14 @@ DriverError tmc2209_homing(uint32_t speed_hz)
     BUSY(1);
 	pin_states.org_state = g_origin_location_flag;
 
-	tmc2209_move_steps(HOMEING_OFFSET, HOMEDING_SPEED_1, DIR_CCW); // 先往反方向移动200微步，保证离开归零位
+	tmc2209_move_steps(HOMEING_OFFSET, HOMEDING_SPEED_1, DIR_CW); // 先往反方向移动200微步，保证离开归零位
 	while(is_running){};
 //	tmc2209_wait_move_done(10000);
 
 	g_origin_location_flag = 0;
     pin_states.org_state   = 0;
 /* 全局引脚状态 */
-    tmc2209_set_motor_direction(DIR_CW);  // DIR_CW为归零方向
+    tmc2209_set_motor_direction(DIR_CCW);  // DIR_CCW为归零方向
 
     /* 等待发送缓冲区空 */
     timeout=0;
@@ -839,8 +982,9 @@ DriverError tmc2209_homing(uint32_t speed_hz)
         }
 		pin_states.org_state = g_origin_location_flag;
 		
-		if(timeout == 200) pin_states.org_state = 1;
+//		if(timeout == 2000) pin_states.org_state = 1;
     }
+	if(speed_hz == 10)  delay_ms(50);
 
 //	tmc2209_disable_motor();
     Encoder_AB_ResetCount();
@@ -878,7 +1022,7 @@ void tmc2209_stallguard_config(void)
     delay_ms(10);
     tmc2209_uart_write_reg(TMC2209_REG_GCONF,0x00000090);//92    
     delay_ms(10);
-    tmc2209_set_current(800, 50);      // 720mA运行电流，80%保持电流
+    tmc2209_set_current(600, 80);      // 720mA运行电流，80%保持电流
     delay_ms(10);
     tmc2209_uart_write_reg(TMC2209_REG_TPWMTHRS,0x00000000);
     delay_ms(10);
@@ -1416,11 +1560,11 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
     steps_to_move = absolute_step - motor_status.position;
     if (steps_to_move < 0) 
     {
-        forward = DIR_CW;
+        forward = DIR_CCW;
     } 
     else 
     {
-        forward = DIR_CCW;
+        forward = DIR_CW;
     }
     
     if (steps_to_move == 0) 
@@ -1462,7 +1606,7 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
     target_steps = abs_steps;
     step_counter = 0;
     tmc2209_set_motor_direction(forward);
-    tmc2209_move_steps(target_steps, MOVE_SPEED, forward);
+    tmc2209_move_steps_ramp(target_steps, MOVE_SPEED, forward);
 //	while(is_running){};
 //    tmc2209_wait_move_done(10000);
 	motor_status.channelNo=point;//保存当前通道号
@@ -1499,6 +1643,46 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
     motor_status.channelNo=point;//保存当前通道号
     return DRV_OK;
 }
+
+void homing_juge(void)
+{
+//	uint32_t timeout = 0;
+    volatile uint32_t i;
+//	uint32_t delay_us;
+    tmc2209_enable_motor();
+    BUSY(1);
+	
+	tmc2209_set_motor_direction(DIR_CW);  // DIR_CCW为归零方向
+
+	for(uint8_t j = 0;j < 20;j++)
+	{
+		tmc2209_step_pulse();
+		delay_ms(50);
+		/* 获取当前编码器位置 */
+		int32_t current_encoder = Encoder_AB_GetCount();
+		
+		if(current_encoder == 2)
+		{
+			tmc2209_step_pulse();
+			delay_ms(50);
+			tmc2209_step_pulse();
+			delay_ms(50);
+//			tmc2209_step_pulse();
+//			delay_ms(50);
+			break;
+		}
+	}
+
+	BUSY(0);
+    Encoder_AB_ResetCount();
+//	wait_for_compensation_cnt = COMPENSATION_TIME;
+
+    /* 设置当前位置为0 */
+	g_origin_location_flag = 0;
+    motor_status.position = 2;
+    motor_status.target_position= 0;
+}
+
 /***************************************************************************
 ;** 函数名称:  move_to_home
 ;** 功能描述:  MCU上电初始化 使马达移动到归零点
@@ -1522,6 +1706,9 @@ DriverError move_to_home(void)
         return ret;
     }
 	ret = tmc2209_homing(10);
+	
+	homing_juge();
+	
     motor_status.channelNo=0;
 //    current_position = 0;
 	motor_status.homing = 1;

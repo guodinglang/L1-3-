@@ -75,6 +75,7 @@ char ftoa(double fv,unsigned char decimals,char *str);
 char itoa(int tv,char *str);
 void configWDT(uint16_t d);
 void W25Q128_ParametInit(void);
+void M_ORG_exti_config(void);
 void M_DIAG_exti_config(void);
 void D_EZ_exti_config(void);
 
