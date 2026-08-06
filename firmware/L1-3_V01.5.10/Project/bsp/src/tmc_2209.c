@@ -1652,30 +1652,46 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
 void homing_juge(void)
 {
 //	uint32_t timeout = 0;
-    volatile uint8_t j;
+    uint8_t j,cnt,en_cnt,flag;
 //	uint32_t delay_us;
 //    tmc2209_enable_motor();
     BUSY(1);
 	
 	tmc2209_set_motor_direction(DIR_CW);  // DIR_CCW为归零方向
+	int32_t last_encoder = Encoder_AB_GetCount();
+//	sprintfx("last_encoder: %ld\r\n", last_encoder);
+	last_encoder = 0;
 
-	for(j = 0;j < 50;j++)
+	for(j = 0,cnt = 0,en_cnt = 0,flag = 0;j < 50;j++)
 	{
 		tmc2209_step_pulse();
 		delay_ms(10);
 		/* 获取当前编码器位置 */
 		int32_t current_encoder = Encoder_AB_GetCount();
-//		sprintfx("编码器位置: %ld\r\n", current_encoder);
+		if(j == 0) last_encoder = current_encoder;
 		
-		if(current_encoder == 2)
+		if((current_encoder >= 0) && (current_encoder < 10)) // 65535
 		{
-			tmc2209_step_pulse();
-			delay_ms(10);
-			tmc2209_step_pulse();
-			delay_ms(10);
-//			tmc2209_step_pulse();
-//			delay_ms(50);
-			break;
+			if(current_encoder == last_encoder) cnt++;
+			else 
+			{
+				flag++;
+				if((cnt >= 5)&&(flag > 1)) {en_cnt++;}
+				cnt = 1;
+				last_encoder = current_encoder;
+			}
+//			sprintfx("current_encoder: %ld flag: %d cnt: %d\r\n", current_encoder, flag, cnt);
+			
+			if(en_cnt == 2)
+			{
+				tmc2209_step_pulse();
+				delay_ms(10);
+				tmc2209_step_pulse();
+				delay_ms(10);
+	//			tmc2209_step_pulse();
+	//			delay_ms(50);
+				break;
+			}
 		}
 	}
 	
