@@ -765,7 +765,8 @@ char OffsetChannel(void *p,...)
 			}
 			else 
 			{
-				printfx("Homeing success\r\n");
+//				printfx("Homeing success\r\n");
+				printfx(" pass\r\n");
 			}
 		}
 		else if(sumsteps <= position_config.max_steps_num)

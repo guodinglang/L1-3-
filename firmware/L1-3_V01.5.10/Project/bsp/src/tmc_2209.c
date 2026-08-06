@@ -951,9 +951,10 @@ DriverError tmc2209_homing(uint32_t speed_hz)
     BUSY(1);
 	pin_states.org_state = g_origin_location_flag;
 
-	tmc2209_move_steps(HOMEING_OFFSET, HOMEDING_SPEED_1, DIR_CW); // 先往反方向移动200微步，保证离开归零位
+	if(speed_hz == 10)  tmc2209_move_steps(20, HOMEDING_SPEED_1, DIR_CW); // 先往反方向移动200微步，保证离开归零位
+	else                tmc2209_move_steps(HOMEING_OFFSET, HOMEDING_SPEED_1, DIR_CW); // 先往反方向移动200微步，保证离开归零位
 	while(is_running){};
-//	tmc2209_wait_move_done(10000);
+	delay_ms(50);
 
 	g_origin_location_flag = 0;
     pin_states.org_state   = 0;
@@ -966,11 +967,14 @@ DriverError tmc2209_homing(uint32_t speed_hz)
     {
         tmc2209_step_pulse();
         
-        /* 发送数据 */
-        delay_us = 1000000 / speed_hz;
-        for(i = 0; i < delay_us; i++) {
-            __NOP();
-        }
+        if(speed_hz == 10) delay_ms(10);
+		else
+		{
+			delay_us = 1000000 / speed_hz;
+			for(i = 0; i < delay_us; i++) {
+				__NOP();
+			}
+		}
         timeout++;
         if(timeout > 40000) {  // 超时
            motor_status.homing = 0;
@@ -984,10 +988,10 @@ DriverError tmc2209_homing(uint32_t speed_hz)
 		
 //		if(timeout == 2000) pin_states.org_state = 1;
     }
-	if(speed_hz == 10)  delay_ms(50);
+//	if(speed_hz == 10)  
+//		delay_ms(500);
 
-//	tmc2209_disable_motor();
-    Encoder_AB_ResetCount();
+//    Encoder_AB_ResetCount();
 
     /* 设置当前位置为0 */
 	g_origin_location_flag = 0;
@@ -1050,7 +1054,8 @@ void tmc2209_stallguard_config(void)
     }
     else 
     {
-        printfx("Homeing success\r\n");
+//        printfx("Homeing success\r\n");
+		printfx(" pass\r\n");
     }
 }
 /***************************************************************************
@@ -1647,35 +1652,45 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
 void homing_juge(void)
 {
 //	uint32_t timeout = 0;
-    volatile uint32_t i;
+    volatile uint8_t j;
 //	uint32_t delay_us;
-    tmc2209_enable_motor();
+//    tmc2209_enable_motor();
     BUSY(1);
 	
 	tmc2209_set_motor_direction(DIR_CW);  // DIR_CCW为归零方向
 
-	for(uint8_t j = 0;j < 20;j++)
+	for(j = 0;j < 50;j++)
 	{
 		tmc2209_step_pulse();
-		delay_ms(50);
+		delay_ms(10);
 		/* 获取当前编码器位置 */
 		int32_t current_encoder = Encoder_AB_GetCount();
+//		sprintfx("编码器位置: %ld\r\n", current_encoder);
 		
 		if(current_encoder == 2)
 		{
 			tmc2209_step_pulse();
-			delay_ms(50);
+			delay_ms(10);
 			tmc2209_step_pulse();
-			delay_ms(50);
+			delay_ms(10);
 //			tmc2209_step_pulse();
 //			delay_ms(50);
 			break;
 		}
 	}
+	
+//	if(j < 15)
+//	{
+//		for(uint8_t i = 0;i < 6;i++)
+//		{
+//			tmc2209_step_pulse();
+//			delay_ms(10);
+//		}
+//	}
 
 	BUSY(0);
     Encoder_AB_ResetCount();
-//	wait_for_compensation_cnt = COMPENSATION_TIME;
+	wait_for_compensation_cnt = COMPENSATION_TIME;
 
     /* 设置当前位置为0 */
 	g_origin_location_flag = 0;

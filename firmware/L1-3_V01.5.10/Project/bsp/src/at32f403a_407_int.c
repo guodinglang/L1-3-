@@ -247,6 +247,7 @@ void EXINT15_10_IRQHandler(void)
 	{
 		exint_flag_clear(EXINT_LINE_12);
 		g_origin_location_flag = 1;
+		Encoder_AB_ResetCount();
 	} 
 }
 
