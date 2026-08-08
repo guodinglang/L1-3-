@@ -1675,7 +1675,7 @@ void homing_juge(void)
 			if(current_encoder == last_encoder) cnt++;
 			else 
 			{
-				flag++;
+				if(cnt > 2)  flag++;
 				if((cnt >= 5)&&(flag > 1)) {en_cnt++;}
 				cnt = 1;
 				last_encoder = current_encoder;
