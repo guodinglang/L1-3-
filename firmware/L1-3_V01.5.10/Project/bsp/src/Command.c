@@ -566,7 +566,7 @@ char LevelValueDispose(void *p,...)
             position_config.points[chn].step_count = data;
             position_config.points[chn].calibrated = true;
             position_config.points[chn].calibration_time = 0;
-            W25Q128_SaveParamet(FLASH_SECTION_PARAMETER,(uint8_t*)&params);//SaveParamet();
+            save_config_to_flash();
             printfx(" pass\r\n");
         }
         else

@@ -322,7 +322,7 @@ typedef enum {
     POINT_P22,
     POINT_P23,
     POINT_P24,
-    MAX_POINTS = 25
+    MAX_POINTS = 48
 } PositionPoint;
 
 // 位置点数据结构
