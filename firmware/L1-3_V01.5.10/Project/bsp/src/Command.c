@@ -560,8 +560,9 @@ char LevelValueDispose(void *p,...)
             {
 
 //                tmc2209_move_steps(sumsteps, MOVE_SPEED, (motor_direction_t)dir);
-							tmc2209_move_steps_ramp(sumsteps, MOVE_SPEED, (motor_direction_t)dir);
-				tmc2209_calculate_deviation();
+				wait_for_compensation_cnt = 0;	
+				tmc2209_move_steps_ramp(sumsteps, MOVE_SPEED, (motor_direction_t)dir);
+//				tmc2209_calculate_deviation();
             }
             position_config.points[chn].step_count = data;
             position_config.points[chn].calibrated = true;
@@ -771,7 +772,8 @@ char OffsetChannel(void *p,...)
 		}
 		else if(sumsteps <= position_config.max_steps_num)
 		{
-			tmc2209_move_steps(step, MOVE_SPEED, DIR_CW);
+			wait_for_compensation_cnt = 0;		
+			tmc2209_move_steps_ramp(step, MOVE_SPEED, (motor_direction_t)dir);
 			printfx(p);printfx(" pass\r\n");
 //			tmc2209_calculate_deviation();
 		}

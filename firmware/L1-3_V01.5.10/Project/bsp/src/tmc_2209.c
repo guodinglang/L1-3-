@@ -35,6 +35,7 @@ static volatile uint32_t decel_steps = 60;         // 减速段步数
 static volatile uint8_t ramp_phase = 0;            // 0:加速 1:匀速 2:减速
 static volatile uint8_t send_cnt = 0;             // 发送次数计数器
 volatile uint8_t wait_for_compensation_cnt = 0;
+static volatile uint8_t adjust_flag = 0;
 
 
 motor_status_t motor_status = {0};
@@ -573,17 +574,20 @@ DriverError tmc2209_wait_move_done(uint16_t timeout_ms)
 ;** 修改原因：  
 ;** 说    明:  	
 ;***************************************************************************/
+
+// val:待处理浮点数 bits:保留小数位数
+float float_round(float val, int bits)
+{
+    float scale = powf(10.0f, bits);
+    return roundf(val * scale) / scale;
+}
+
 uint8_t tmc2209_motion_compensation(void)
 {
-	/* 等待主运动完成 */
-//	while(is_running){};
-//		printfx(" pass\r\n");
-//	delay_ms(100);
-////	tmc2209_wait_move_done(10000);
-//	
 	/* 停止后进行编码器位置补偿 */
-	int32_t current_encoder = Encoder_AB_GetCount();
-	int32_t encoder_delta = current_encoder - encoder_start_count;
+	uint32_t current_encoder = Encoder_AB_GetCount();
+	uint32_t encoder_delta = current_encoder - encoder_start_count;
+	uint32_t correct_steps = 0;
 //    int32_t current_encoder = Encoder_AB_GetCount();
 //    float expected_encoder = motor_status.position * (ENCODER_PER_REVOLUTION / STEPS_PER_REV);
 //    float encoder_position = (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
@@ -592,20 +596,16 @@ uint8_t tmc2209_motion_compensation(void)
 	
 	
 	/* 计算编码器对应的理论步数 */
-	float expected_steps = (encoder_delta * STEPS_PER_REV) / ENCODER_PER_REVOLUTION;
+	float expected_steps = encoder_delta * 12.8;// (STEPS_PER_REV / ENCODER_PER_REVOLUTION);
 	float error = motor_status.position - expected_steps;
 	
-//	sprintfx("编码器位置: %ld, 目标位置: %ld, 偏差微步数: %f\r\n", current_encoder, motor_status.position, error);
+//	sprintfx("编码器位置: %ld, 目标位置: %ld, 偏差微步数: %.2f\r\n", current_encoder, motor_status.position, error);
 	
 	/* 误差超过阈值时进行补偿运动 */
 	if (error > ENCODER_CORRECT_THRESHOLD || error < -ENCODER_CORRECT_THRESHOLD)
 	{
-		/* 计算需要补偿的步数和方向
-		 * error > 0: 马达走多了，需要往回走
-		 * error < 0: 马达走少了，需要继续往前走
-		 */
 		motor_direction_t correct_dir;
-		uint32_t correct_steps;
+//		adjust_flag = 1;
 		
 		if (error < 0)
 		{
@@ -646,137 +646,92 @@ uint8_t tmc2209_motion_compensation(void)
 		
 //		sprintfx("补偿数: %ld\r\n", error);
 	}
-//	else
-//	{
-//		wait_for_compensation_cnt = 0;
-//		motor_direction_t correct_dir;
-//		uint32_t correct_steps;
-//		
-//		if (error < 0)
-//		{
-//			/* 走多了，反向补偿 */
-//			correct_dir = DIR_CCW;//(dir == DIR_CW) ? DIR_CCW : DIR_CW;
-//			correct_steps = (uint32_t)(-error);
-//		}
-//		else
-//		{
-//			/* 走少了，同向补偿 */
-//			correct_dir = DIR_CW;
-//			correct_steps = (uint32_t)(error);
-//		}
-//		
-//		/* 执行补偿运动（慢速） */
-//		if (correct_steps > 0)
-//		{
-////				encoder_start_count = Encoder_AB_GetCount();  // 记录补偿前位置
-//			step_counter = 0;
-//			target_steps = correct_steps;
-//			
-//			tmc2209_set_direction(correct_dir);
-//			if (tmc2209_config.step_frequency != MOVE_COMP_SPEED)
-//			{
-//				tmc2209_config.step_frequency = MOVE_COMP_SPEED;
-//				tmc2209_timer_set_frequency(MOVE_COMP_SPEED);
-//				motor_status.speed = MOVE_COMP_SPEED;
-//			}
-//			tmr_counter_enable(STEP_TIMER, TRUE);
-//			is_running = 1;
-//			motor_status.moving = 1;
-//			BUSY(1);
-//			
-//			/* 等待补偿完成 */
-//			while(is_running){};
-////			tmc2209_wait_move_done(10000);
-//		}
-//	}
-//	else
-//	{
-//		motor_direction_t correct_dir;
-//		uint32_t correct_steps;
-//		
-//		if (error < 0)
-//		{
-//			/* 走多了，反向补偿 */
-//			correct_dir = DIR_CCW;//(dir == DIR_CW) ? DIR_CCW : DIR_CW;
-//			correct_steps = (uint32_t)(-error);
-//		}
-//		else
-//		{
-//			/* 走少了，同向补偿 */
-//			correct_dir = DIR_CW;
-//			correct_steps = (uint32_t)(error);
-//		}
-//		
-//		/* 执行补偿运动（慢速） */
-//		if (correct_steps > 0)
-//		{
-//			tmc2209_set_direction(correct_dir); 
-//			last_encoder = motor_status.position/6.4;
-//			if(error > 0) // 走少了，目标值比刻度大，往前走
-//			{
-////				for(uint8_t j = 0;j < error;j++)
-////				{
-////					tmc2209_step_pulse();
-////					for(uint32_t i = 0; i < 10000; i++) {
-////						__NOP();
-////					}
-////				}
-//				step_counter = 0;
-//				target_steps = correct_steps;
-//				
-//				tmc2209_set_direction(correct_dir);
-//				if (tmc2209_config.step_frequency != MOVE_COMP_SPEED)
-//				{
-//					tmc2209_config.step_frequency = MOVE_COMP_SPEED;
-//					tmc2209_timer_set_frequency(MOVE_COMP_SPEED);
-//					motor_status.speed = MOVE_COMP_SPEED;
-//				}
-//				tmr_counter_enable(STEP_TIMER, TRUE);
-//				is_running = 1;
-//				motor_status.moving = 1;
-//				BUSY(1);
-//				
-//				/* 等待补偿完成 */
-//				while(is_running){};
-//					
-//				delay_ms(50);	
-//				current_encoder = Encoder_AB_GetCount();
-//				if(current_encoder > last_encoder)
-//				{
-//					tmc2209_set_direction(DIR_CCW); // 先往前走几步到下一个刻度，再这里返回
-//					error = abs(current_encoder*6.4 - motor_status.position);
-//					for(uint8_t j = 0;j < (uint8_t)error;j++)
-//					{
-//						tmc2209_step_pulse();
-//						for(uint32_t i = 0; i < 1000; i++) {
-//							__NOP();
-//						}
-//					}
-//				}
-//			}
-//			else // 走多了，目标值比刻度小，往后走
-//			{
-//				for(uint8_t j = 0;j < 10;j++)
-//				{
-//					tmc2209_step_pulse();
+	else if(adjust_flag == 1)
+	{
+		motor_direction_t correct_dir;
+		uint32_t correct_steps;
+		adjust_flag = 0;
+		
+		if (error < 0)
+		{
+			/* 走多了，反向补偿 */
+			error = float_round(error,0);
+			correct_dir = DIR_CCW;//(dir == DIR_CW) ? DIR_CCW : DIR_CW;
+			correct_steps = (uint32_t)(-error);
+		}
+		else
+		{
+			/* 走少了，同向补偿 */
+			error = float_round(error,0);
+			correct_dir = DIR_CW;
+			correct_steps = (uint32_t)(error);
+		}
+		
+		/* 执行补偿运动（慢速） */
+//		if (correct_steps >= 0)
+		{
+			tmc2209_set_direction(DIR_CCW); 
+			float last_encoder = current_encoder;//motor_status.position/12.8;
+			if(error >= 0) // 走少了，目标值比刻度大，往后走
+			{
+				for(uint8_t j = 0;j < 50;j++)
+				{
+					tmc2209_step_pulse();
+					delay_ms(10);
 //					for(uint32_t i = 0; i < 1000; i++) {
 //						__NOP();
 //					}
-//					current_encoder = Encoder_AB_GetCount();
-//					if(current_encoder < last_encoder)  break;
-//				}
+					current_encoder = Encoder_AB_GetCount();
+					if(current_encoder < last_encoder)  break;
+				}
+//				sprintfx("编码器位置: %ld, 目标位置: %ld\r\n", current_encoder, motor_status.position);
+				delay_ms(10);
+				current_encoder = Encoder_AB_GetCount();
+//				sprintfx("编码器位置: %ld, correct_steps: %ld\r\n", current_encoder, (correct_steps + 1));
+				tmc2209_set_direction(DIR_CW); // 先往后走几步到下一个刻度，再往前几步
+//				error = abs(motor_status.position - current_encoder*12.8);
+				for(uint8_t j = 0;j < (correct_steps + 1);j++)
+				{
+					tmc2209_step_pulse();
+					for(uint32_t i = 0; i < 1000; i++) {
+						__NOP();
+					}
+				}
+				delay_ms(10);
+				current_encoder = Encoder_AB_GetCount();
+//				sprintfx("编码器位置: %ld\r\n", current_encoder);
+			}
+			else // 走多了，目标值比刻度小，往后走
+			{
+				for(uint8_t j = 0;j < 50;j++)
+				{
+					tmc2209_step_pulse();
+					delay_ms(10);
+//					for(uint32_t i = 0; i < 1000; i++) {
+//						__NOP();
+//					}
+					current_encoder = Encoder_AB_GetCount();
+					if(current_encoder < last_encoder)  break;
+				}
+//				sprintfx("编码器位置: %ld, 目标位置: %ld\r\n", current_encoder, motor_status.position);
+				delay_ms(10);
+				current_encoder = Encoder_AB_GetCount();
+//				sprintfx("编码器位置: %ld, correct_steps: %ld\r\n", current_encoder, correct_steps);
 //				tmc2209_set_direction(DIR_CW); // 先往后走几步到下一个刻度，再往前几步
-//				error = abs(motor_status.position - current_encoder*6.4);
-//				for(uint8_t j = 0;j < (uint8_t)error;j++)
-//				{
-//					tmc2209_step_pulse();
-//					for(uint32_t i = 0; i < 1000; i++) {
-//						__NOP();
-//					}
-//				}
-//			}
-//		}
-//	}
+//				error = abs(motor_status.position - current_encoder*12.8);
+				for(uint8_t j = 0;j < correct_steps;j++)
+				{
+					tmc2209_step_pulse();
+					for(uint32_t i = 0; i < 1000; i++) {
+						__NOP();
+					}
+				}
+				delay_ms(10);
+				current_encoder = Encoder_AB_GetCount();
+//				sprintfx("编码器位置: %ld\r\n", current_encoder);
+			}
+		}
+	}
 	
 	return 0;
 }
@@ -900,6 +855,7 @@ void tmc2209_move_steps_ramp(uint32_t steps, uint32_t max_freq, motor_direction_
 	while(is_running) {};
 		
 	wait_for_compensation_cnt = COMPENSATION_TIME;
+	adjust_flag = 1;
 
     // /* 拉低驱动器使能引脚2ms再恢复锁定 */
 	// gpio_bits_set(TMC_ENN_PORT, TMC_ENN_PIN);
@@ -925,6 +881,7 @@ void wait_for_compensation(void)
 		wait_for_compensation_cnt = COMPENSATION_TIME;
 		if(((motor_status.homing))) {
 //			for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
+			if(adjust_flag == 1)	
 				tmc2209_motion_compensation();
 //			}
 		}		
@@ -1034,7 +991,7 @@ void tmc2209_stallguard_config(void)
     delay_ms(10);
     tmc2209_uart_write_reg(TMC2209_WREG_SGTHRS,0x00000096);
     delay_ms(10);
-    tmc2209_uart_write_reg(TMC2209_REG_CHOPCONF,0x01000053);
+    tmc2209_uart_write_reg(TMC2209_REG_CHOPCONF,0x10000053); // 0x01000053
     delay_ms(10);
     tmc2209_uart_write_reg(TMC2209_REG_PWMCONF,0xC10D1624);
     delay_ms(10);  // 等待TMC2209上电稳定
@@ -1611,6 +1568,7 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
     target_steps = abs_steps;
     step_counter = 0;
     tmc2209_set_motor_direction(forward);
+	wait_for_compensation_cnt = 0;	
     tmc2209_move_steps_ramp(target_steps, MOVE_SPEED, forward);
 //	while(is_running){};
 //    tmc2209_wait_move_done(10000);
@@ -1651,8 +1609,8 @@ DriverError move_to_absolute_step(PositionPoint point,int32_t absolute_step)
 
 void homing_juge(void)
 {
-//	uint32_t timeout = 0;
-    uint8_t j,cnt,en_cnt,flag;
+	uint32_t j = 0,en_cnt = 0;
+    uint8_t cnt,flag;
 //	uint32_t delay_us;
 //    tmc2209_enable_motor();
     BUSY(1);
@@ -1670,13 +1628,13 @@ void homing_juge(void)
 		int32_t current_encoder = Encoder_AB_GetCount();
 		if(j == 0) last_encoder = current_encoder;
 		
-		if((current_encoder >= 0) && (current_encoder < 10)) // 65535
+		if((current_encoder >= 0) && (current_encoder < 4000)) // 65535
 		{
 			if(current_encoder == last_encoder) cnt++;
 			else 
 			{
-				if(cnt > 2)  flag++;
-				if((cnt >= 5)&&(flag > 1)) {en_cnt++;}
+				if(cnt > 4)  flag++;
+				if((cnt >= 10)&&(flag > 1)) {en_cnt++;}
 				cnt = 1;
 				last_encoder = current_encoder;
 			}
