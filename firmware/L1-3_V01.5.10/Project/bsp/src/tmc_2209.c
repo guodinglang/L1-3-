@@ -927,7 +927,7 @@ DriverError tmc2209_homing(uint32_t speed_hz)
         if(speed_hz == 10) delay_ms(10);
 		else
 		{
-			delay_us = 1000000 / speed_hz;
+			delay_us = 1000000 / speed_hz / 2;
 			for(i = 0; i < delay_us; i++) {
 				__NOP();
 			}
@@ -1620,7 +1620,7 @@ void homing_juge(void)
 //	sprintfx("last_encoder: %ld\r\n", last_encoder);
 	last_encoder = 0;
 
-	for(j = 0,cnt = 0,en_cnt = 0,flag = 0;j < 50;j++)
+	for(j = 0,cnt = 0,en_cnt = 0,flag = 0;j < 100;j++)
 	{
 		tmc2209_step_pulse();
 		delay_ms(10);
