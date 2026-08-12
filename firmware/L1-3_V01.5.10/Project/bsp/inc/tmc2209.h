@@ -76,20 +76,20 @@
 #define STEP_TIMER_IRQHANDLER    tmr3_global_isr
 
 // 电机参数配置
-#define MICROSTEPS        256    // 微步细分
-#define STEPS_PER_REV     51200  // 每转步数
+#define MICROSTEPS        128    // 微步细分
+#define STEPS_PER_REV     25600  // 每转步数
 //#define MAX_STEP_POSITION 12736  // P16位置
 
 // 移动速度（Hz）
 #define HOMEDING_SPEED_1   500    // 归零移动速度（Hz）
 #define HOMEDING_SPEED   500    // 归零移动速度（Hz）
-#define MOVE_SPEED       60000   // 移动速度（Hz）
+#define MOVE_SPEED       50000   // 移动速度（Hz）
 #define MOVE_COMP_SPEED  5000   // 补偿移动速度（Hz）
 #define HOMEING_OFFSET   300    // 归零偏移步数（微步）
 
 #define ENCODER_PER_REVOLUTION  4000        // 编码器一圈脉冲数
 #define ENCODER_CORRECT_INTERVAL 100         // 每50步检查一次编码器
-#define ENCODER_CORRECT_THRESHOLD 7         // 修正阈值（步数） 25600/4000=6.4步/脉冲，3步误差约等于半个编码器脉冲
+#define ENCODER_CORRECT_THRESHOLD 3         // 修正阈值（步数） 25600/4000=6.4步/脉冲，3步误差约等于半个编码器脉冲
 #define ENCODER_FEEDBACK_COMPENSATION_TIMES 1 // 反馈补偿次数
 
 #define COMPENSATION_TIME  50
