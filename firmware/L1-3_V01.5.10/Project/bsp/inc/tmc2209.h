@@ -83,7 +83,7 @@
 // 移动速度（Hz）
 #define HOMEDING_SPEED_1   500    // 归零移动速度（Hz）
 #define HOMEDING_SPEED   500    // 归零移动速度（Hz）
-#define MOVE_SPEED       60000   // 移动速度（Hz）
+#define MOVE_SPEED       100000   // 移动速度（Hz）
 #define MOVE_COMP_SPEED  5000   // 补偿移动速度（Hz）
 #define HOMEING_OFFSET   300    // 归零偏移步数（微步）
 

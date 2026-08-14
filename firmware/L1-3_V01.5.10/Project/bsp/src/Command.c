@@ -422,7 +422,7 @@ char ReadSelectSwitch(void *p,...)
             }
             else
             {
-                sprintfx("%s",(char*)p);
+//                sprintfx("%s",(char*)p);
                 printfx("pass\r\n");
             }
             
