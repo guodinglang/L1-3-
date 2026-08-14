@@ -92,7 +92,8 @@
 #define ENCODER_CORRECT_THRESHOLD 7         // 修正阈值（步数） 25600/4000=6.4步/脉冲，3步误差约等于半个编码器脉冲
 #define ENCODER_FEEDBACK_COMPENSATION_TIMES 1 // 反馈补偿次数
 
-#define COMPENSATION_TIME  50
+#define COMPENSATION_TIME_1  100
+#define COMPENSATION_TIME_2  50
 
 
 /* 工作模式 */

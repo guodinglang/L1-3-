@@ -593,7 +593,7 @@ uint8_t tmc2209_motion_compensation(void)
 //    float encoder_position = (current_encoder * STEPS_PER_REV / ENCODER_PER_REVOLUTION);
 //    float position_delta = motor_status.position - encoder_position;
     
-	
+	wait_for_compensation_cnt = COMPENSATION_TIME_2;
 	
 	/* 计算编码器对应的理论步数 */
 	float expected_steps = encoder_delta * 12.8;// (STEPS_PER_REV / ENCODER_PER_REVOLUTION);
@@ -647,11 +647,11 @@ uint8_t tmc2209_motion_compensation(void)
 		
 //		sprintfx("补偿数: %ld\r\n", error);
 	}
-	else if(adjust_flag == 1)
+	else if(adjust_flag > 0)
 	{
 		motor_direction_t correct_dir;
 		uint32_t correct_steps;
-		adjust_flag = 0;
+		adjust_flag--;
 		
 		if (error < 0)
 		{
@@ -705,6 +705,8 @@ uint8_t tmc2209_motion_compensation(void)
 			}
 			else // 走多了，目标值比刻度小，往后走
 			{
+				current_encoder = Encoder_AB_GetCount();
+				sprintfx("000编码器位置: %ld\r\n", current_encoder);
 				for(uint8_t j = 0;j < 50;j++)
 				{
 					tmc2209_step_pulse();
@@ -857,8 +859,8 @@ void tmc2209_move_steps_ramp(uint32_t steps, uint32_t max_freq, motor_direction_
 	/* 等待运动完成 */
 	while(is_running) {};
 		
-	wait_for_compensation_cnt = COMPENSATION_TIME;
-	adjust_flag = 1;
+	wait_for_compensation_cnt = COMPENSATION_TIME_1;
+	adjust_flag = 2;
 
     // /* 拉低驱动器使能引脚2ms再恢复锁定 */
 	// gpio_bits_set(TMC_ENN_PORT, TMC_ENN_PIN);
@@ -881,10 +883,10 @@ void wait_for_compensation(void)
 	if(wait_for_compensation_cnt == 1)
 	{
 //		tmc2209_calculate_deviation();
-		wait_for_compensation_cnt = COMPENSATION_TIME;
+//		wait_for_compensation_cnt = COMPENSATION_TIME_2;
 		if(((motor_status.homing))) {
 //			for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
-			if(adjust_flag == 1)	
+			if(adjust_flag > 0)	
 				tmc2209_motion_compensation();
 //			}
 		}		
@@ -1669,7 +1671,7 @@ void homing_juge(void)
 
 	BUSY(0);
     Encoder_AB_ResetCount();
-	wait_for_compensation_cnt = COMPENSATION_TIME;
+//	wait_for_compensation_cnt = COMPENSATION_TIME_1;
 
     /* 设置当前位置为0 */
 	g_origin_location_flag = 0;
