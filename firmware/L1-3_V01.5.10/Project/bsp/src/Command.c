@@ -779,6 +779,8 @@ char OffsetChannel(void *p,...)
 		}
 		else
 		{
+			if(step == 100000)       motor_status.com_enable = 0;
+			else if(step == 200000)  motor_status.com_enable = 1;
 			sprintfx("%s",(char*)p);
 			printfx(" fail\r\n");
 		}

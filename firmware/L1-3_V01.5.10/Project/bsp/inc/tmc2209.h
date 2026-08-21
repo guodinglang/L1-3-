@@ -195,6 +195,7 @@ typedef struct {
     //pin_operation_mode_t mode;  /* 操作模式 */
     uint8_t microsteps;         /* 当前微步设置 */
     uint8_t run_mode;           /* 运行模式：0=StealthChop, 1=SpreadCycle */
+	uint8_t com_enable;
 } motor_status_t;
 extern motor_status_t motor_status;
 /* 引脚状态结构体 */

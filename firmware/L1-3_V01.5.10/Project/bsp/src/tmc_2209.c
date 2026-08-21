@@ -880,11 +880,11 @@ void tmc2209_move_steps_ramp(uint32_t steps, uint32_t max_freq, motor_direction_
 
 void wait_for_compensation(void)
 {
-	if(wait_for_compensation_cnt == 1)
+	if((wait_for_compensation_cnt == 1))
 	{
 //		tmc2209_calculate_deviation();
 //		wait_for_compensation_cnt = COMPENSATION_TIME_2;
-		if(((motor_status.homing))) {
+		if(((motor_status.homing))&&(motor_status.com_enable==0)) {
 //			for(uint8_t i = 0; i < ENCODER_FEEDBACK_COMPENSATION_TIMES; i++) {
 			if(adjust_flag > 0)	
 				tmc2209_motion_compensation();
@@ -1007,6 +1007,7 @@ void tmc2209_stallguard_config(void)
 //	tmc2209_uart_read_reg(TMC2209_REG_CHOPCONF,&data);
 //	delay_ms(10);
 	motor_status.homing = 0;
+	motor_status.com_enable = 0;
     ret = move_to_home();
     if(ret != DRV_OK)
     {
